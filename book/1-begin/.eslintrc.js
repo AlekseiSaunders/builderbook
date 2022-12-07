@@ -10,6 +10,7 @@ module.exports = {
     'prettier/prettier': [
       'error',
       {
+        endOfLine: 'auto',
         singleQuote: true,
         trailingComma: 'all',
         arrowParens: 'always',
