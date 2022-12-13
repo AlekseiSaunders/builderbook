@@ -1,21 +1,69 @@
+/* eslint-disable react/no-danger */
+import React from 'react';
 import Document, { Head, Html, Main, NextScript } from 'next/document';
+import PropTypes from 'prop-types';
+
+import createEmotionServer from '@emotion/server/create-instance';
+import createCache from '@emotion/cache';
+
+const propTypes = {
+  styles: PropTypes.arrayOf(
+    PropTypes.string || PropTypes.number || PropTypes.ReactElementLike || React.ReactFragment,
+  ).isRequired,
+};
 
 class MyDocument extends Document {
+  static getInitialProps = async (ctx) => {
+    // Render app and page and get the context of the page with collected side effects.
+    const originalRenderPage = ctx.renderPage;
+
+    // You can consider sharing the same emotion cache between all the SSR requests to speed up performance.
+    // However, be aware that it can have global side effects.
+    const cache = createCache({
+      key: 'css',
+      prepend: true,
+    });
+    const { extractCriticalToChunks } = createEmotionServer(cache);
+
+    ctx.renderPage = () =>
+      originalRenderPage({
+        // eslint-disable-next-line react/display-name
+        enhanceApp: (App) => (props) => <App emotionCache={cache} {...props} />,
+      });
+
+    const initialProps = await Document.getInitialProps(ctx);
+    const chunks = extractCriticalToChunks(initialProps.html);
+
+    const emotionStyleTags = chunks.styles.map((style) => (
+      <style
+        data-emotion={`${style.key} ${style.ids.join(' ')}`}
+        key={style.key}
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: style.css }}
+      />
+    ));
+    return {
+      ...initialProps,
+      // Styles fragemnt is rendered after the app and page rendering finish.
+      styles: [...React.Children.toArray(initialProps.styles), ...emotionStyleTags],
+    };
+  };
+
   render() {
     return (
-      <Html lang="en">
+      <Html lang="en" style={{ height: '100%' }}>
         <Head>
           {/* // 1. metadata */}
           <meta charSet="utf-8" />
           <meta name="google" content="notranslate" />
-          <meta name="theme-color" content="#197602" />
+          <meta name="theme-color" content="#1976D2" />
           {/* // 2. static resources (from CDN) */}
           <link
             rel="shortcut icon"
             href="https://storage.googleapis.com/builderbook/favicon32.png"
           />
           <link
-            rel="sytlesheet"
+            rel="stylesheet"
             href="https://fonts.googleapis.com/css?family=Roboto:300,400:latin"
           />
           <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
@@ -53,6 +101,7 @@ class MyDocument extends Document {
 										}
 										`}
           </style>
+          {this.props.styles}
         </Head>
         <body>
           <Main />
@@ -63,4 +112,5 @@ class MyDocument extends Document {
   }
 }
 
+MyDocument.propTypes = propTypes;
 export default MyDocument;
