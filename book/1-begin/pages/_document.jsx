@@ -32,6 +32,8 @@ class MyDocument extends Document {
       });
 
     const initialProps = await Document.getInitialProps(ctx);
+    // This is important. It prevents emotion to render invalid HTML.
+    // See https://github.com/mui-org/material-ui/issues/26561#issuecomment-855286153
     const chunks = extractCriticalToChunks(initialProps.html);
 
     const emotionStyleTags = chunks.styles.map((style) => (
@@ -44,7 +46,7 @@ class MyDocument extends Document {
     ));
     return {
       ...initialProps,
-      // Styles fragemnt is rendered after the app and page rendering finish.
+      // Styles fragment is rendered after the app and page rendering finish.
       styles: [...React.Children.toArray(initialProps.styles), ...emotionStyleTags],
     };
   };
